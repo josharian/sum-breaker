@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html class="no-js">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+
+        <link rel="stylesheet" href="css/bootstrap.min.css">
+        <style>
+            body {
+                padding-top: 60px;
+                padding-bottom: 40px;
+            }
+        </style>
+        <link rel="stylesheet" href="css/bootstrap-responsive.min.css">
+        <link rel="stylesheet" href="css/main.css">
+
+        <!--[if lt IE 9]>
+            <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+            <script>window.html5 || document.write('<script src="js/vendor/html5shiv.js"><\/script>')</script>
+        <![endif]-->
+    </head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+        <!-- This code is taken from http://twitter.github.com/bootstrap/examples/hero.html -->
+
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </a>
+                    <a class="brand" href="#">Sum breaker</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+
+            <!-- Main hero unit for a primary marketing message or call to action -->
+            <div class="hero-unit">
+                <h1>Break down your sum</h1>
+                <br/>
+                <p>You have a bunch of numbers and a sum. Some of those numbers add up to that sum, but you don't know which. (This happens a lot with non-itemized invoices and reports. Grrr.) Not to worry...</p>
+            </div>
+
+            <!-- Example row of columns -->
+            <div class="row">
+                <div class="span4">
+                    <h2>Lots of numbers</h2>
+                    <p><textarea rows="10" class="span3" autofocus="true" id="numbers"></textarea></p>
+                </div>
+                <div class="span4">
+                    <h2>Target sum</h2>
+                    <p><input class="span3" id="sum"></input></p>
+                    <p><div class="btn" id="go-button">Break it down &raquo;</div></p>
+               </div>
+                <div class="span4">
+                    <h2>Breakdown</h2>
+                    <pre id="breakdown" class="span3"></pre>
+                </div>
+            </div>
+
+            <hr>
+
+            <footer>
+                <p><a href="https://github.com/josharian/sum-breaker">Source on GitHub</a></p>
+            </footer>
+
+        </div> <!-- /container -->
+
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.9.1.min.js"><\/script>')</script>
+
+        <script src="js/vendor/bootstrap.min.js"></script>
+
+        <script src="js/main.js"></script>
+        <script>
+            $(document).ready(
+                function() {
+                    $("#go-button").click(function() {
+                        calculate();
+                    })
+                    run_unit_tests();
+                });
+
+            function calculate() {
+                raw_numbers = $("#numbers").val()
+                number_strings = raw_numbers.split(/[^0-9.-]/)
+                numbers = []
+                for(index in number_strings) {
+                    number = parseFloat(number_strings[index])
+                    if(!isNaN(number)) {
+                        numbers.push(number)
+                    }
+                }
+                numbers.sort()
+
+                console.log("Parsed numbers: " + numbers)
+                if(numbers.length < 2) {
+                    $("#breakdown").text("Enter some numbers.")
+                    return;
+                }
+
+
+                raw_sum = $("#sum").val()
+                sum = parseFloat(raw_sum)
+
+                console.log("Target sum: " + sum)
+                if(isNaN(sum)){
+                    $("#breakdown").text("Enter a target sum.")
+                    return;
+                }
+
+                solutions = breakdowns(numbers, sum)
+                if(solutions.length == 0) {
+                    $("#breakdown").text("No solutions found.")
+                } else {
+                    $("#breakdown").text("Solutions: \n" + solutions.join("\n"))
+                }
+            };
+
+            function breakdowns(sorted_array, target_sum) {
+                // Yes, yes, i do all sorts of floating-point-unsafe things here...
+                // subtracting potentially small values off a potentially big one,
+                // using a crude approximate equality check, etc. Yes, I should use
+                // decimals, or more careful floating point stuff. This is a quick
+                // hack of a website, though...and for the people I am building it
+                // for, and their uses (mostly money), it is a-ok as it is.
+
+                if(Math.abs(target_sum) < 1e-8) {
+                    return [[]]
+                }
+
+                if(sorted_array.length == 0) {
+                    return []
+                }
+
+                var solutions = []
+                for(var index = 0; index < sorted_array.length; index++) {
+                    if(sorted_array[index] > target_sum) {
+                        // no chance
+                        break
+                    }
+
+                    var removed_val = sorted_array[index]
+                    var subarray = sorted_array.slice(1 + index)
+                    var recursed_solutions = breakdowns(subarray, target_sum - removed_val)
+                    for(sol_index in recursed_solutions) {
+                        var recursed_solution = recursed_solutions[sol_index].slice()
+                        recursed_solution.push(removed_val)
+                        recursed_solution.sort()
+                        solutions.push(recursed_solution)
+                    }
+                }
+
+                return solutions.slice()
+            }
+
+            function run_unit_tests() {
+                console.log("Running unit tests...")
+
+                tests = [
+
+                    [
+                        [1, 2, 3],
+                        5,
+                        [[2, 3]]
+                    ],
+
+
+                    [
+                        [1.0, 1.9, 3.1],
+                        5,
+                        [[1.9, 3.1]]
+                    ],
+
+                    [
+                        [2, 3],
+                        5,
+                        [[2, 3]]
+                    ],
+
+
+                    [
+                        [1, 2, 2, 3],
+                        5,
+                        [[1, 2, 2], [2, 3], [2, 3]]
+                    ],
+
+                    [
+                        [],
+                        0,
+                        [[]]
+                    ],
+
+                    [
+                        [],
+                        1,
+                        []
+                    ],
+
+                    [
+                        [-1, 1, 2, 3, 4],
+                        3,
+                        [[-1, 1, 3], [-1, 4], [1, 2], [3]]
+                    ],
+
+                ]
+
+                failure_count = 0
+                for(index in tests) {
+                    test = tests[index]
+                    numbers = test[0]
+                    numbers.sort()
+                    sum = test[1]
+                    correct = test[2]
+
+                    output = breakdowns(numbers, sum)
+                    // I CAN'T BELIEVE I AM MANUALLY
+                    // IMPLEMENTING ARRAY EQUALITY I HATE
+                    // THIS LANGUAGE SO VERY VERY MUCH
+                    fail = output.length != correct.length
+                    if(!fail) {
+                        for(var i = 0; i < output.length; i++) {
+                            var o = output[i]
+                            var c = correct[i]
+                            if(o.length != c.length) {
+                                fail = true
+                                break;
+                            }
+                            o.sort()
+                            c.sort()
+                            for(var j = 0; j < o.length; j++) {
+                                if(o[j] != c[j]) {
+                                    fail = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if(fail) {
+                        failure_count += 1
+                        console.log("Test failure.")
+                        console.log("Numbers:")
+                        console.log(numbers)
+                        console.log("Sum:")
+                        console.log(sum)
+                        console.log("Expected:")
+                        console.log(correct)
+                        console.log("Got:")
+                        console.log(output)
+                    }
+                }
+
+                if(failure_count == 0) { 
+                    console.log("Unit tests PASSED.")
+                } else {
+                    console.log(failure_count + " unit tests FAILED.")
+                    $("#breakdown").text("This page's self-test has failed. I recommend not to use it.")
+                }
+            }
+
+        </script>
+    </body>
+</html>
